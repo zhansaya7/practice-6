@@ -1,0 +1,140 @@
+import java.util.*;
+
+interface CostCalculationStrategy {
+    double calculateCost(TravelRequest request);
+}
+
+class TravelRequest {
+    double distance;
+    int passengers;
+    String serviceClass; // economy / business
+    boolean childDiscount;
+    boolean pensionerDiscount;
+    boolean baggage;
+
+    public TravelRequest(double distance, int passengers, String serviceClass,
+                         boolean childDiscount, boolean pensionerDiscount, boolean baggage) {
+        this.distance = distance;
+        this.passengers = passengers;
+        this.serviceClass = serviceClass;
+        this.childDiscount = childDiscount;
+        this.pensionerDiscount = pensionerDiscount;
+        this.baggage = baggage;
+    }
+}
+
+class PlaneStrategy implements CostCalculationStrategy {
+    public double calculateCost(TravelRequest r) {
+        double base = r.distance * 0.5;
+
+        if (r.serviceClass.equalsIgnoreCase("business"))
+            base *= 1.8;
+
+        if (r.baggage)
+            base += 50;
+
+        return applyDiscounts(base, r);
+    }
+
+    private double applyDiscounts(double cost, TravelRequest r) {
+        if (r.childDiscount) cost *= 0.7;
+        if (r.pensionerDiscount) cost *= 0.8;
+        return cost * r.passengers;
+    }
+}
+
+class TrainStrategy implements CostCalculationStrategy {
+    public double calculateCost(TravelRequest r) {
+        double base = r.distance * 0.2;
+
+        if (r.serviceClass.equalsIgnoreCase("business"))
+            base *= 1.5;
+
+        return applyDiscounts(base, r);
+    }
+
+    private double applyDiscounts(double cost, TravelRequest r) {
+        if (r.childDiscount) cost *= 0.8;
+        if (r.pensionerDiscount) cost *= 0.85;
+        return cost * r.passengers;
+    }
+}
+
+class BusStrategy implements CostCalculationStrategy {
+    public double calculateCost(TravelRequest r) {
+        double base = r.distance * 0.1;
+
+        if (r.baggage)
+            base += 20;
+
+        return applyDiscounts(base, r);
+    }
+
+    private double applyDiscounts(double cost, TravelRequest r) {
+        if (r.childDiscount) cost *= 0.9;
+        return cost * r.passengers;
+    }
+}
+
+class TravelBookingContext {
+    private CostCalculationStrategy strategy;
+
+    public void setStrategy(CostCalculationStrategy strategy) {
+        this.strategy = strategy;
+    }
+
+    public double calculate(TravelRequest request) {
+        if (strategy == null)
+            throw new IllegalStateException("Стратегия не выбрана!");
+        return strategy.calculateCost(request);
+    }
+}
+
+public class TravelBookingSystem {
+
+    public static void main(String[] args) {
+
+        Scanner sc = new Scanner(System.in);
+        TravelBookingContext context = new TravelBookingContext();
+
+        try {
+            System.out.println("Выберите транспорт: 1-Самолет 2-Поезд 3-Автобус");
+            int choice = sc.nextInt();
+
+            System.out.println("Введите расстояние (км):");
+            double distance = sc.nextDouble();
+
+            System.out.println("Количество пассажиров:");
+            int passengers = sc.nextInt();
+
+            sc.nextLine();
+            System.out.println("Класс обслуживания (economy/business):");
+            String serviceClass = sc.nextLine();
+
+            System.out.println("Есть детская скидка? (true/false)");
+            boolean child = sc.nextBoolean();
+
+            System.out.println("Есть скидка пенсионера? (true/false)");
+            boolean pension = sc.nextBoolean();
+
+            System.out.println("Есть багаж? (true/false)");
+            boolean baggage = sc.nextBoolean();
+
+            TravelRequest request = new TravelRequest(
+                    distance, passengers, serviceClass, child, pension, baggage);
+
+            switch (choice) {
+                case 1: context.setStrategy(new PlaneStrategy()); break;
+                case 2: context.setStrategy(new TrainStrategy()); break;
+                case 3: context.setStrategy(new BusStrategy()); break;
+                default: throw new IllegalArgumentException("Неверный транспорт!");
+            }
+
+            double total = context.calculate(request);
+            System.out.println("Итоговая стоимость: " + total);
+
+        } catch (Exception e) {
+            System.out.println("Ошибка ввода: " + e.getMessage());
+        }
+    }
+}
