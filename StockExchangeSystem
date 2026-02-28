@@ -1,0 +1,105 @@
+import java.util.*;
+import java.util.concurrent.*;
+
+interface Observer {
+    void update(String stock, double price);
+    String getName();
+}
+
+interface Subject {
+    void subscribe(String stock, Observer observer);
+    void unsubscribe(String stock, Observer observer);
+    void notifyObservers(String stock, double price);
+}
+
+class StockExchange implements Subject {
+
+    private Map<String, List<Observer>> observers = new HashMap<>();
+
+    public void subscribe(String stock, Observer observer) {
+        observers.computeIfAbsent(stock, k -> new ArrayList<>()).add(observer);
+        System.out.println(observer.getName() + " подписался на " + stock);
+    }
+
+    public void unsubscribe(String stock, Observer observer) {
+        if (observers.containsKey(stock)) {
+            observers.get(stock).remove(observer);
+            System.out.println(observer.getName() + " отписался от " + stock);
+        }
+    }
+
+    public void changePrice(String stock, double price) {
+        System.out.println("\nЦена " + stock + " изменилась: " + price);
+        notifyObservers(stock, price);
+    }
+
+    public void notifyObservers(String stock, double price) {
+        if (!observers.containsKey(stock)) return;
+
+        for (Observer o : observers.get(stock)) {
+            CompletableFuture.runAsync(() -> o.update(stock, price));
+        }
+    }
+}
+
+
+class Trader implements Observer {
+
+    private String name;
+
+    public Trader(String name) {
+        this.name = name;
+    }
+
+    public void update(String stock, double price) {
+        System.out.println("Трейдер " + name + ": новая цена " + stock + " = " + price);
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+
+class TradingRobot implements Observer {
+
+    private String name;
+    private double buyThreshold;
+
+    public TradingRobot(String name, double buyThreshold) {
+        this.name = name;
+        this.buyThreshold = buyThreshold;
+    }
+
+    public void update(String stock, double price) {
+        if (price < buyThreshold)
+            System.out.println("Робот " + name + " покупает " + stock);
+        else
+            System.out.println("Робот " + name + " наблюдает за " + stock);
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+public class StockExchangeSystem {
+
+    public static void main(String[] args) throws InterruptedException {
+
+        StockExchange exchange = new StockExchange();
+
+        Trader trader1 = new Trader("Ali");
+        TradingRobot robot1 = new TradingRobot("BotX", 100);
+
+        exchange.subscribe("AAPL", trader1);
+        exchange.subscribe("AAPL", robot1);
+        exchange.subscribe("TSLA", trader1);
+
+        exchange.changePrice("AAPL", 120);
+        Thread.sleep(500);
+
+        exchange.changePrice("AAPL", 90);
+        Thread.sleep(500);
+
+        exchange.changePrice("TSLA", 300);
+    }
+}
